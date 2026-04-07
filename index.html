@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autorizaciones Triple - Rich Rolon</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 15px; background: #f0f2f5; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h2 { color: #007bff; margin-bottom: 20px; }
+        .grid-uploads { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 12px; }
+        .upload-wrapper { 
+            position: relative; width: 100%; height: 110px; border: 2px dashed #cbd5e0; 
+            border-radius: 10px; background: #f8fafc; overflow: hidden; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .esquema { position: absolute; width: 90%; height: 90%; background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.15; z-index: 1; }
+        .preview-img { position: absolute; width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; }
+        input[type="file"] { position: absolute; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer; }
+        
+        .controls { text-align: left; margin-top: 20px; padding: 20px; background: #e2e8f0; border-radius: 15px; }
+        select, button { width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 10px; border: none; font-size: 16px; }
+        #generateBtn { background: #28a745; color: white; cursor: pointer; transition: 0.3s; }
+        #generateBtn:disabled { background: #94a3b8; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Autorizaciones Triple</h2>
+    
+    <div class="grid-uploads">
+        <div class="upload-card">
+            <small>Fila 1 - Frontal</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema frontal.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p1')">
+                <img id="p1" class="preview-img">
+            </div>
+        </div>
+        <div class="upload-card">
+            <small>Fila 1 - Posterior</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema posterior.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p2')">
+                <img id="p2" class="preview-img">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-uploads">
+        <div class="upload-card">
+            <small>Fila 2 - Frontal</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema frontal.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p3')">
+                <img id="p3" class="preview-img">
+            </div>
+        </div>
+        <div class="upload-card">
+            <small>Fila 2 - Posterior</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema posterior.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p4')">
+                <img id="p4" class="preview-img">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-uploads">
+        <div class="upload-card">
+            <small>Fila 3 - Frontal</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema frontal.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p5')">
+                <img id="p5" class="preview-img">
+            </div>
+        </div>
+        <div class="upload-card">
+            <small>Fila 3 - Posterior</small>
+            <div class="upload-wrapper">
+                <div class="esquema" style="background-image: url('esquema posterior.jpg');"></div>
+                <input type="file" onchange="previewFile(this, 'p6')">
+                <img id="p6" class="preview-img">
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label>Modo de Color:</label>
+        <select id="colorMode">
+            <option value="color">A Color</option>
+            <option value="bw">Blanco y Negro</option>
+        </select>
+        <button id="generateBtn" disabled>Generar PDF Triple (Oficio)</button>
+    </div>
+</div>
+
+<canvas id="procCanvas" style="display:none;"></canvas>
+
+<script>
+    const images = { p1:null, p2:null, p3:null, p4:null, p5:null, p6:null };
+    const footerImageUrl = "tu_banner_inferior.png"; 
+
+    function previewFile(input, id) {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById(id);
+            img.src = e.target.result;
+            img.style.display = 'block';
+            images[id] = e.target.result;
+            checkReady();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function checkReady() {
+        // Se habilita si al menos el primer par está cargado
+        if (images.p1 && images.p2) document.getElementById('generateBtn').disabled = false;
+    }
+
+    async function processBW(base64) {
+        return new Promise(res => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.getElementById('procCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width; canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const data = ctx.getImageData(0,0,canvas.width,canvas.height);
+                for(let i=0; i<data.data.length; i+=4) {
+                    const g = data.data[i]*0.3 + data.data[i+1]*0.59 + data.data[i+2]*0.11;
+                    data.data[i] = data.data[i+1] = data.data[i+2] = g;
+                }
+                ctx.putImageData(data, 0,0);
+                res(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = base64;
+        });
+    }
+
+    document.getElementById('generateBtn').onclick = async function() {
+        this.innerText = "Procesando...";
+        this.disabled = true;
+        
+        try {
+            const isBW = document.getElementById('colorMode').value === 'bw';
+            const { jsPDF } = window.jspdf;
+            
+            // Tamaño Oficio 216x330mm
+            const doc = new jsPDF('p', 'mm', [216, 330]);
+            
+            const w = 85; const h = 55;
+            const xStart = 25; // Borde izquierdo 25mm
+            const yTop = 20;   // Borde superior 20mm
+            const gapX = 6;    // Entre fotos 6mm
+            const gapY = 15;   // Entre filas 15mm
+
+            const pares = [
+                {f: images.p1, b: images.p2},
+                {f: images.p3, b: images.p4},
+                {f: images.p5, b: images.p6}
+            ];
+
+            for (let i = 0; i < pares.length; i++) {
+                if (pares[i].f && pares[i].b) {
+                    let imgF = isBW ? await processBW(pares[i].f) : pares[i].f;
+                    let imgB = isBW ? await processBW(pares[i].b) : pares[i].b;
+                    let yPos = yTop + (i * (h + gapY));
+                    doc.addImage(imgF, 'JPEG', xStart, yPos, w, h);
+                    doc.addImage(imgB, 'JPEG', xStart + w + gapX, yPos, w, h);
+                }
+            }
+
+            // CARGA DE IMAGEN INFERIOR (25mm izq, 10mm del borde inferior)
+            // 330 (alto) - 100 (imagen) - 10 (margen) = 220mm de posición Y
+            const loadFooter = () => {
+                return new Promise((resolve) => {
+                    const footerImg = new Image();
+                    footerImg.onload = () => {
+                        doc.addImage(footerImg, 'PNG', 25, 220, 175, 100);
+                        resolve();
+                    };
+                    footerImg.onerror = () => resolve();
+                    footerImg.src = footerImageUrl;
+                });
+            };
+
+            await loadFooter();
+
+            if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                const blob = doc.output('bloburl');
+                window.location.href = blob;
+            } else {
+                doc.save("autorizaciones_triple.pdf");
+            }
+
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            this.innerText = "Generar PDF (Oficio)";
+            this.disabled = false;
+        }
+    };
+</script>
+</body>
+</html>
